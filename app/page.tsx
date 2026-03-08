@@ -247,6 +247,13 @@ export default function Home() {
     }
   }, [prices, renderMarkers]);
 
+  // Default price to average when form opens
+  useEffect(() => {
+    if (showForm && !price && metrics) {
+      setPrice(metrics.avg.toFixed(2));
+    }
+  }, [showForm]);
+
   // Resize map when switching back to map view
   useEffect(() => {
     if (activeView === "map" && map.current) {
