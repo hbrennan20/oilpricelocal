@@ -60,17 +60,28 @@ export default function Home() {
   const [historyFilter, setHistoryFilter] = useState("All");
   const [locatingUser, setLocatingUser] = useState(false);
 
+  const [locationError, setLocationError] = useState<string | null>(null);
+
   function useCurrentLocation() {
-    if (!navigator.geolocation) return;
+    if (!navigator.geolocation) {
+      setLocationError("Geolocation not supported");
+      return;
+    }
     setLocatingUser(true);
+    setLocationError(null);
     navigator.geolocation.getCurrentPosition(
       (pos) => {
         setClickedLat(Math.round(pos.coords.latitude * 10000) / 10000);
         setClickedLng(Math.round(pos.coords.longitude * 10000) / 10000);
         setLocatingUser(false);
       },
-      () => setLocatingUser(false),
-      { enableHighAccuracy: true }
+      (err) => {
+        setLocatingUser(false);
+        if (err.code === 1) setLocationError("Location access denied. Allow location in browser settings.");
+        else if (err.code === 2) setLocationError("Location unavailable. Try again.");
+        else setLocationError("Location timed out. Try again.");
+      },
+      { enableHighAccuracy: true, timeout: 10000 }
     );
   }
 
@@ -495,6 +506,7 @@ export default function Home() {
               <span className="location-dot" />
               {locatingUser ? "Locating..." : "Use my current location"}
             </button>
+            {locationError && <p className="location-error">{locationError}</p>}
 
             <label>
               Station Name
