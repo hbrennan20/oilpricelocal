@@ -1,0 +1,19 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "nextjs-dev",
+      "runtimeExecutable": "/bin/sh",
+      "runtimeArgs": ["-c", "export PATH=/opt/homebrew/bin:/Users/hugh/repos/oilpricelocal/node_modules/.bin:$PATH && next dev --port $PORT"],
+      "port": 3000,
+      "autoPort": true
+    },
+    {
+      "name": "nextjs-start",
+      "runtimeExecutable": "/bin/sh",
+      "runtimeArgs": ["-c", "export PATH=/opt/homebrew/bin:/Users/hugh/repos/oilpricelocal/node_modules/.bin:$PATH && next start --port $PORT"],
+      "port": 3000,
+      "autoPort": true
+    }
+  ]
+}
