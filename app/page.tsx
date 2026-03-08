@@ -39,7 +39,8 @@ export default function Home() {
   const [price, setPrice] = useState("");
 
   // Photo state
-  const [photo, setPhoto] = useState<string | null>(null);
+  const [photoPreview, setPhotoPreview] = useState<string | null>(null);
+  const [photoFile, setPhotoFile] = useState<Blob | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // History filter
@@ -74,9 +75,9 @@ export default function Home() {
   function handlePhoto(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
+    // Resize to max 800px then convert to blob for upload
     const reader = new FileReader();
     reader.onloadend = () => {
-      // Resize to max 800px to save localStorage space
       const img = new Image();
       img.onload = () => {
         const canvas = document.createElement("canvas");
@@ -90,7 +91,14 @@ export default function Home() {
         canvas.width = w;
         canvas.height = h;
         canvas.getContext("2d")!.drawImage(img, 0, 0, w, h);
-        setPhoto(canvas.toDataURL("image/jpeg", 0.7));
+        canvas.toBlob(
+          (blob) => {
+            if (blob) setPhotoFile(blob);
+          },
+          "image/jpeg",
+          0.7
+        );
+        setPhotoPreview(canvas.toDataURL("image/jpeg", 0.7));
       };
       img.src = reader.result as string;
     };
@@ -250,6 +258,25 @@ export default function Home() {
     e.preventDefault();
     if (!stationName.trim() || !price.trim()) return;
 
+    let photoUrl: string | null = null;
+
+    // Upload photo to Supabase Storage if present
+    if (photoFile) {
+      const fileName = `${Date.now()}-${Math.random().toString(36).slice(2)}.jpg`;
+      const { error: uploadError } = await supabase.storage
+        .from("fuel-photos")
+        .upload(fileName, photoFile, { contentType: "image/jpeg" });
+
+      if (uploadError) {
+        console.error("Failed to upload photo:", uploadError);
+      } else {
+        const { data: urlData } = supabase.storage
+          .from("fuel-photos")
+          .getPublicUrl(fileName);
+        photoUrl = urlData.publicUrl;
+      }
+    }
+
     const { data, error } = await supabase
       .from("fuel_prices")
       .insert({
@@ -258,7 +285,7 @@ export default function Home() {
         price: parseFloat(price).toFixed(2),
         lng: clickedLng,
         lat: clickedLat,
-        ...(photo ? { photo } : {}),
+        ...(photoUrl ? { photo: photoUrl } : {}),
       })
       .select()
       .single();
@@ -284,7 +311,8 @@ export default function Home() {
     setStationName("");
     setPrice("");
     setFuelType(FUEL_TYPES[0]);
-    setPhoto(null);
+    setPhotoPreview(null);
+    setPhotoFile(null);
     if (fileInputRef.current) fileInputRef.current.value = "";
     setShowForm(false);
   }
@@ -545,7 +573,6 @@ export default function Home() {
                 value={stationName}
                 onChange={(e) => setStationName(e.target.value)}
                 required
-                autoFocus
               />
             </label>
 
@@ -565,15 +592,38 @@ export default function Home() {
 
             <label>
               Price per litre
-              <input
-                type="number"
-                step="0.01"
-                min="0"
-                placeholder="1.65"
-                value={price}
-                onChange={(e) => setPrice(e.target.value)}
-                required
-              />
+              <div className="price-stepper">
+                <button
+                  type="button"
+                  className="stepper-btn"
+                  onClick={() => setPrice((v) => {
+                    const n = Math.max(0, (parseFloat(v) || 0) - 0.01);
+                    return n.toFixed(2);
+                  })}
+                >
+                  &minus;
+                </button>
+                <input
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  placeholder="1.65"
+                  value={price}
+                  onChange={(e) => setPrice(e.target.value)}
+                  className="stepper-input"
+                  required
+                />
+                <button
+                  type="button"
+                  className="stepper-btn"
+                  onClick={() => setPrice((v) => {
+                    const n = (parseFloat(v) || 0) + 0.01;
+                    return n.toFixed(2);
+                  })}
+                >
+                  +
+                </button>
+              </div>
             </label>
 
             <div className="photo-section">
@@ -586,7 +636,7 @@ export default function Home() {
                 onChange={handlePhoto}
                 className="photo-input"
               />
-              {!photo && (
+              {!photoPreview && (
                 <button
                   type="button"
                   className="photo-btn"
@@ -599,13 +649,13 @@ export default function Home() {
                   Take Photo
                 </button>
               )}
-              {photo && (
+              {photoPreview && (
                 <div className="photo-preview">
-                  <img src={photo} alt="Price photo" />
+                  <img src={photoPreview} alt="Price photo" />
                   <button
                     type="button"
                     className="photo-remove"
-                    onClick={() => { setPhoto(null); if (fileInputRef.current) fileInputRef.current.value = ""; }}
+                    onClick={() => { setPhotoPreview(null); setPhotoFile(null); if (fileInputRef.current) fileInputRef.current.value = ""; }}
                   >
                     &times;
                   </button>

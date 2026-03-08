@@ -317,6 +317,59 @@ body {
   border-color: #3b82f6;
 }
 
+/* Price stepper */
+.price-form .price-stepper {
+  display: flex;
+  align-items: stretch;
+  gap: 0;
+  margin-top: 6px;
+  border-radius: 8px;
+  overflow: hidden;
+  border: 2px solid #334155;
+}
+
+.stepper-btn {
+  width: 48px;
+  flex-shrink: 0;
+  background: #1e293b;
+  color: #f1f5f9;
+  border: none;
+  font-size: 20px;
+  font-weight: 700;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s;
+}
+
+.stepper-btn:hover {
+  background: #334155;
+}
+
+.stepper-btn:active {
+  background: #3b82f6;
+}
+
+.stepper-input {
+  flex: 1;
+  border: none !important;
+  border-left: 1px solid #334155 !important;
+  border-right: 1px solid #334155 !important;
+  border-radius: 0 !important;
+  margin-top: 0 !important;
+  text-align: center;
+  font-size: 18px !important;
+  font-weight: 600;
+  -moz-appearance: textfield;
+}
+
+.stepper-input::-webkit-outer-spin-button,
+.stepper-input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
 .form-buttons {
   display: flex;
   gap: 12px;
