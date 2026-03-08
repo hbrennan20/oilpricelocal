@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState, useCallback, useMemo } from "react";
 import mapboxgl from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
-import { supabase } from "./supabase";
+import { getSupabase } from "./supabase";
 
 interface PriceEntry {
   id: string;
@@ -117,7 +117,7 @@ export default function Home() {
   // Load prices from Supabase
   useEffect(() => {
     async function fetchPrices() {
-      const { data, error } = await supabase
+      const { data, error } = await getSupabase()
         .from("fuel_prices")
         .select("*")
         .order("created_at", { ascending: false });
@@ -270,21 +270,21 @@ export default function Home() {
     // Upload photo to Supabase Storage if present
     if (photoFile) {
       const fileName = `${Date.now()}-${Math.random().toString(36).slice(2)}.jpg`;
-      const { error: uploadError } = await supabase.storage
+      const { error: uploadError } = await getSupabase().storage
         .from("fuel-photos")
         .upload(fileName, photoFile, { contentType: "image/jpeg" });
 
       if (uploadError) {
         console.error("Failed to upload photo:", uploadError);
       } else {
-        const { data: urlData } = supabase.storage
+        const { data: urlData } = getSupabase().storage
           .from("fuel-photos")
           .getPublicUrl(fileName);
         photoUrl = urlData.publicUrl;
       }
     }
 
-    const { data, error } = await supabase
+    const { data, error } = await getSupabase()
       .from("fuel_prices")
       .insert({
         station_name: stationName.trim(),
@@ -325,7 +325,7 @@ export default function Home() {
   }
 
   async function handleDelete(id: string) {
-    const { error } = await supabase.from("fuel_prices").delete().eq("id", id);
+    const { error } = await getSupabase().from("fuel_prices").delete().eq("id", id);
     if (error) {
       console.error("Failed to delete price:", error);
       return;
