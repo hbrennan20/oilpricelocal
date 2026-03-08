@@ -405,6 +405,7 @@ export default function Home() {
             </div>
           ) : (
             <div className="history-table-wrap">
+              {/* Desktop table */}
               <table className="history-table">
                 <thead>
                   <tr>
@@ -445,6 +446,34 @@ export default function Home() {
                   ))}
                 </tbody>
               </table>
+
+              {/* Mobile cards */}
+              {filteredHistory.map((entry) => (
+                <div className="history-card" key={`card-${entry.id}`}>
+                  <div className="history-card-photo">
+                    {entry.photo ? (
+                      <img src={entry.photo} alt="" />
+                    ) : (
+                      <div className="no-photo-card">No pic</div>
+                    )}
+                  </div>
+                  <div className="history-card-body">
+                    <div className="history-card-top">
+                      <span className="history-card-station">{entry.stationName}</span>
+                      <span className="history-card-price">&euro;{entry.price}</span>
+                    </div>
+                    <div className="history-card-meta">
+                      <span className={`fuel-badge ${entry.fuelType.toLowerCase().replace(" ", "-")}`}>
+                        {entry.fuelType}
+                      </span>
+                      <span className="history-card-date">{new Date(entry.timestamp).toLocaleDateString()}</span>
+                      <button className="history-card-delete" onClick={() => handleDelete(entry.id)} title="Delete">
+                        &times;
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ))}
             </div>
           )}
         </div>
