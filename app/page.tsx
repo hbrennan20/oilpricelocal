@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState, useCallback, useMemo } from "react";
 import mapboxgl from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
+import { supabase } from "./supabase";
 
 interface PriceEntry {
   id: string;
@@ -16,21 +17,6 @@ interface PriceEntry {
 }
 
 const FUEL_TYPES = ["Petrol", "Diesel", "Premium Petrol", "Premium Diesel"];
-
-const STORAGE_KEY = "petrol-prices";
-
-function loadPrices(): PriceEntry[] {
-  if (typeof window === "undefined") return [];
-  try {
-    return JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]");
-  } catch {
-    return [];
-  }
-}
-
-function savePrices(prices: PriceEntry[]) {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(prices));
-}
 
 type View = "map" | "history";
 
@@ -120,9 +106,33 @@ export default function Home() {
     }
   }, []);
 
-  // Load prices
+  // Load prices from Supabase
   useEffect(() => {
-    setPrices(loadPrices());
+    async function fetchPrices() {
+      const { data, error } = await supabase
+        .from("fuel_prices")
+        .select("*")
+        .order("created_at", { ascending: false });
+
+      if (error) {
+        console.error("Failed to load prices:", error);
+        return;
+      }
+
+      setPrices(
+        (data || []).map((row) => ({
+          id: row.id,
+          stationName: row.station_name,
+          fuelType: row.fuel_type,
+          price: parseFloat(row.price).toFixed(2),
+          lng: row.lng,
+          lat: row.lat,
+          timestamp: new Date(row.created_at).getTime(),
+          ...(row.photo ? { photo: row.photo } : {}),
+        }))
+      );
+    }
+    fetchPrices();
   }, []);
 
   // Metrics
@@ -211,7 +221,7 @@ export default function Home() {
     });
 
     m.on("load", () => {
-      renderMarkers(m, loadPrices());
+      renderMarkers(m, prices);
     });
 
     map.current = m;
@@ -236,24 +246,40 @@ export default function Home() {
     }
   }, [activeView]);
 
-  function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!stationName.trim() || !price.trim()) return;
 
+    const { data, error } = await supabase
+      .from("fuel_prices")
+      .insert({
+        station_name: stationName.trim(),
+        fuel_type: fuelType,
+        price: parseFloat(price).toFixed(2),
+        lng: clickedLng,
+        lat: clickedLat,
+        ...(photo ? { photo } : {}),
+      })
+      .select()
+      .single();
+
+    if (error) {
+      console.error("Failed to save price:", error);
+      return;
+    }
+
     const entry: PriceEntry = {
-      id: crypto.randomUUID(),
-      stationName: stationName.trim(),
-      fuelType,
-      price: parseFloat(price).toFixed(2),
-      lng: clickedLng,
-      lat: clickedLat,
-      timestamp: Date.now(),
-      ...(photo ? { photo } : {}),
+      id: data.id,
+      stationName: data.station_name,
+      fuelType: data.fuel_type,
+      price: parseFloat(data.price).toFixed(2),
+      lng: data.lng,
+      lat: data.lat,
+      timestamp: new Date(data.created_at).getTime(),
+      ...(data.photo ? { photo: data.photo } : {}),
     };
 
-    const updated = [...prices, entry];
-    savePrices(updated);
-    setPrices(updated);
+    setPrices((prev) => [entry, ...prev]);
 
     setStationName("");
     setPrice("");
@@ -263,10 +289,13 @@ export default function Home() {
     setShowForm(false);
   }
 
-  function handleDelete(id: string) {
-    const updated = prices.filter((p) => p.id !== id);
-    savePrices(updated);
-    setPrices(updated);
+  async function handleDelete(id: string) {
+    const { error } = await supabase.from("fuel_prices").delete().eq("id", id);
+    if (error) {
+      console.error("Failed to delete price:", error);
+      return;
+    }
+    setPrices((prev) => prev.filter((p) => p.id !== id));
   }
 
   const filteredHistory = useMemo(() => {
